@@ -41,8 +41,13 @@ const Agent = ({
     };
 
     const onCallEnd = () => {
-      setCallStatus(CallStatus.FINISHED);
-    };
+ console.log("Call ended — forcing save");
+
+  setCallStatus(CallStatus.FINISHED);
+
+  setTimeout(() => {
+    handleGenerateFeedback(messages);
+  }, 1000);    };
 
     const onMessage = (message: Message) => {
       if (message.type === "transcript" && message.transcriptType === "final") {
@@ -87,31 +92,36 @@ const Agent = ({
       setLastMessage(messages[messages.length - 1].content);
     }
 
-    const handleGenerateFeedback = async (messages: SavedMessage[]) => {
-      console.log("handleGenerateFeedback");
+const handleGenerateFeedback = async (messages: SavedMessage[]) => {
+  console.log("Saving feedback, messages:", messages);
 
-      const { success, feedbackId: id } = await createFeedback({
-        interviewId: interviewId!,
-        userId: userId!,
-        transcript: messages,
-        feedbackId,
-      });
+  const safeMessages =
+    messages.length > 0
+      ? messages
+      : [{ role: "system", content: "Interview ended early." }];
 
-      if (success && id) {
-        router.push(`/interview/${interviewId}/feedback`);
-      } else {
-        console.log("Error saving feedback");
-        router.push("/");
-      }
-    };
+  const { success, feedbackId: id } = await createFeedback({
+    interviewId: interviewId!,
+    userId: userId!,
+    transcript: safeMessages,
+    feedbackId,
+  });
 
-    if (callStatus === CallStatus.FINISHED) {
-      if (type === "generate") {
-        router.push("/");
-      } else {
-        handleGenerateFeedback(messages);
-      }
-    }
+  if (success && id) {
+    router.push(`/interview/${interviewId}/feedback`);
+  } else {
+    console.log("Error saving feedback");
+    router.push("/");
+  }
+};
+
+    // if (callStatus === CallStatus.FINISHED) {
+    //   if (type === "generate") {
+    //     router.push("/");
+    //   } else {
+    //     handleGenerateFeedback(messages);
+    //   }
+    // }
   }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
 
   const handleCall = async () => {
